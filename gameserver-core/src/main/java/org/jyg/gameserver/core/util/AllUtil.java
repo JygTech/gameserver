@@ -1,5 +1,10 @@
 package org.jyg.gameserver.core.util;
 
+import com.google.protobuf.MessageLite;
+import io.netty.buffer.ByteBuf;
+import org.jyg.gameserver.core.msg.AbstractMsgCodec;
+import org.jyg.gameserver.core.msg.ByteMsgObj;
+
 import java.io.*;
 import java.lang.reflect.Method;
 import java.net.Inet4Address;
@@ -132,11 +137,34 @@ public class AllUtil {
     public static void println(Object obj){
         System.out.println(obj);
     }
+
+    public static void println(byte[] bytes){
+        StringBuilder sb = new StringBuilder();
+        for(byte b:bytes){
+            sb.append(b).append(',');
+        }
+        System.out.println(sb.toString());
+    }
+
     public static void properties2Object(final String fileName, final Object object) {
+
+        File file = new File(fileName);
+
+        if(!file.exists()){
+            Logs.DEFAULT_LOGGER.error(" config {} file not exist " , fileName);
+            return;
+        }
+
+        if(file.isDirectory()){
+            Logs.DEFAULT_LOGGER.error(" config {} file isDirectory " , fileName);
+            return;
+        }
+
+
         try {
 //            InputStream in = new BufferedInputStream(new FileInputStream(filePath));
             Properties properties = new Properties();
-            try (InputStream in = AllUtil.class.getClassLoader().getResourceAsStream(fileName)){
+            try (InputStream in = new BufferedInputStream(new FileInputStream(file));){
                 properties.load(in);
             }
             properties2Object(properties, object);
@@ -196,11 +224,86 @@ public class AllUtil {
                     default:
                         continue;
                 }
+                Logs.DEFAULT_LOGGER.info("set field : {} value : {} " , key , arg);
                 method.invoke(object, arg);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
     }
+
+    /**
+     *
+     * @param context context
+     * @param msg msg
+     * @param buf buf
+     */
+    public static void writeToBuf(Context context, MessageLite msg, ByteBuf buf) {
+        Class<? extends MessageLite> protoClazz = msg.getClass();
+        Logs.DEFAULT_LOGGER.info("deal threadName : " + Thread.currentThread().getName());
+        byte[] msgBytes = msg.toByteArray();
+//    if (msg instanceof GeneratedMessageV3) {
+//       bytes = msg.toByteArray();
+//       protoClazz = ((GeneratedMessageV3)msg).getClass();
+//    } else if (msg instanceof GeneratedMessageV3.Builder) {
+////         GeneratedMessageV3 messageLite =  ((GeneratedMessageV3.Builder) msg).build();
+////         bytes = messageLite.toByteArray();
+////         protoClazz = messageLite.getClass();
+//       throw new IllegalArgumentException("Unknow message type");
+//    }else {
+//       throw new IllegalArgumentException("Unknow message type");
+//    }
+
+        if (msgBytes == null) {
+            throw new IllegalArgumentException("not MessageLiteOrBuilder");
+        }
+        int eventId = context.getMsgIdByProtoClass(protoClazz);
+        if (eventId <= 0) {
+            Logs.DEFAULT_LOGGER.error("unknow eventid  protoClazz : {}" , protoClazz);
+            return;
+        }
+
+//    if(context.getServerConfig().isUseGzip()){
+//       bytes = ZipUtil.gzip(bytes);
+//    }
+
+        writeToBuf(eventId , buf , msgBytes);
+    }
+
+
+    /**
+     *
+     * @param context context
+     * @param byteMsgObj byteMsgObj
+     * @param buf buf
+     */
+    public static void writeToBuf(Context context, ByteMsgObj byteMsgObj, ByteBuf buf) {
+        Class<? extends ByteMsgObj> byteMsgObjClazz = byteMsgObj.getClass();
+        Logs.DEFAULT_LOGGER.info("deal threadName : " + Thread.currentThread().getName());
+
+
+        int eventId = context.getMsgIdByByteMsgObj(byteMsgObjClazz);
+        if (eventId < 0) {
+            Logs.DEFAULT_LOGGER.error("unknow eventid");
+            return;
+        }
+
+
+        AbstractMsgCodec msgCodec = context.getMsgCodec(eventId);
+
+        byte[] msgBytes = msgCodec.encode(byteMsgObj);
+
+        writeToBuf(eventId , buf , msgBytes);
+
+    }
+
+    private static void writeToBuf(int msgId ,ByteBuf buf, byte[] msgBytes){
+        int protoLen = 4 + msgBytes.length;
+//    ByteBuf buf = ctx.alloc().directBuffer(protoLen);
+        buf.writeInt(protoLen);
+        buf.writeInt(msgId);
+        buf.writeBytes(msgBytes);
+    }
+
 
 }

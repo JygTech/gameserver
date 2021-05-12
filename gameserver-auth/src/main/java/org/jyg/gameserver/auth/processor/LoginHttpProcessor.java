@@ -1,65 +1,71 @@
 package org.jyg.gameserver.auth.processor;
 
-import java.util.Set;
-
-import org.jyg.gameserver.core.processor.HttpProcessor;
-import org.jyg.gameserver.core.net.Request;
-import org.jyg.gameserver.core.net.Response;
-import org.jyg.gameserver.core.util.redis.RedisCacheClient;
-import org.jyg.gameserver.core.util.TokenUtil;
-
 import io.netty.handler.codec.http.cookie.Cookie;
 import io.netty.handler.codec.http.cookie.DefaultCookie;
+import org.jyg.gameserver.core.net.Request;
+import org.jyg.gameserver.core.net.Response;
+import org.jyg.gameserver.core.processor.HttpProcessor;
+import org.jyg.gameserver.core.util.Logs;
+import org.jyg.gameserver.core.util.TokenUtil;
 
-import javax.inject.Inject;
+import java.util.Set;
+
+//import org.jyg.gameserver.core.util.redis.RedisCacheClient;
 
 /**
  * created by jiayaoguang at 2018年3月20日
  */
 public class LoginHttpProcessor extends HttpProcessor {
 
-	private final RedisCacheClient redisCacheClient;
+//	private final RedisCacheClient redisCacheClient;
 
-	@Inject
-	public LoginHttpProcessor(RedisCacheClient redisCacheClient) {
-		this.redisCacheClient = redisCacheClient;
+	public LoginHttpProcessor() {
+//		this.redisCacheClient = redisCacheClient;
 	}
 
 	@Override
 	public void service(Request request, Response response) {
-		String username = request.getParameter("username");
+		String account = request.getParameter("username");
 		String password = request.getParameter("password");
-		System.out.println(username + " >> " + password);
+		Logs.DEFAULT_LOGGER.info(account + " >> " + password);
 
-		if (!checkLogin(username, password)) {
+		if (!checkLogin(account, password)) {
 			response.sendRedirect("/login.html");
 			return;
 		}
+
+
 		String token = TokenUtil.getToken();
-		String setResult = null;
-		try {
-			setResult = redisCacheClient.setValueExpire(username, 60, token);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
 
-		if (setResult == null) {
-			System.out.println(" set value fail ");
-		} else {
-			System.out.println(" set value success " + setResult);
-		}
-		request.decodeCookies();
+		getContext().getSingleThreadExecutorManager(request.getRequestid()).execute(()->{
 
-		Set<Cookie> cookies = request.decodeCookies();
-		for (Cookie c : cookies) {
-			System.out.println(c.name() + " : " + c.value());
-		}
-		Cookie cookie = new DefaultCookie("jyg", "jia");
-		cookie.setMaxAge(60 * 60L);
+			String setResult = null;
+			try {
+//				setResult = redisCacheClient.setValueExpire(account, 60, token);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+
+			if (setResult == null) {
+				Logs.DEFAULT_LOGGER.info(" set value fail ");
+			} else {
+				Logs.DEFAULT_LOGGER.info(" set value success " + setResult);
+			}
+			request.decodeCookies();
+
+			Set<Cookie> cookies = request.decodeCookies();
+			for (Cookie c : cookies) {
+				System.out.println(c.name() + " : " + c.value());
+			}
+			Cookie cookie = new DefaultCookie("jyg", "jia");
+			cookie.setMaxAge(60 * 60L);
 //		cookie.setDomain("127.0.0.1");
-		cookie.setPath("/");
-		response.addCookie(cookie);
-		response.writeAndFlush("<html><head></head><body>welcome user " + request.getParameter("username") + " to index," + " token :" + token + "<body></html>");
+			cookie.setPath("/");
+			response.addCookie(cookie);
+			response.writeAndFlush("<html><head></head><body>welcome user " + request.getParameter("username") + " to index," + " token :" + token + "<body></html>");
+
+		});
+
 
 	}
 

@@ -2,7 +2,7 @@ package org.jyg.gameserver.test.tcp.chat;
 
 import org.jyg.gameserver.core.processor.ProtoProcessor;
 import org.jyg.gameserver.core.session.Session;
-import org.jyg.gameserver.core.startup.GameServerBootstarp;
+import org.jyg.gameserver.core.startup.GameServerBootstrap;
 import org.jyg.gameserver.test.proto.MsgChat;
 
 import java.util.ArrayList;
@@ -16,7 +16,7 @@ import java.util.List;
 public class ServerTest01 
 {
     public static void main( String[] args ) throws Exception{
-        GameServerBootstarp bootstarp = new GameServerBootstarp();
+        GameServerBootstrap bootstarp = new GameServerBootstrap();
         
         ProtoProcessor<MsgChat> chatProcessor = new ProtoProcessor<MsgChat>(MsgChat.getDefaultInstance()) {
         	@Override
@@ -27,12 +27,14 @@ public class ServerTest01
         			return;
         		}
 
-				List<MsgChat> msgList = new ArrayList<>();
+//				List<MsgChat> msgList = new ArrayList<>();
+//
+//        		for(int i = 0;i<2;i++){
+//        			msgList.add(MsgChat.newBuilder().setContent("i just think so ,hello world too -"+i).build());
+//				}
+//				session.writeMessage(msgList);
 
-        		for(int i = 0;i<10;i++){
-        			msgList.add(MsgChat.newBuilder().setContent("i just think so ,hello world too -"+i).build());
-				}
-				session.writeMessage(msgList);
+				session.writeMessage(MsgChat.newBuilder().setContent("i just think so ,hello world too").build());
 			}
 			
         };
@@ -42,13 +44,13 @@ public class ServerTest01
 //		bootstarp.addMsgId2ProtoMapping(3, p_scene_sm_chat.getDefaultInstance());
 //		bootstarp.addMsgId2ProtoMapping(4, p_sm_scene_chat.getDefaultInstance());
 
-		bootstarp.addMsgId2ProtoMapping(5, MsgChat.getDefaultInstance());
+		bootstarp.addMsgId2ProtoMapping(105, MsgChat.getDefaultInstance());
 
 
 		bootstarp.addProtoProcessor(chatProcessor);
         
 
-		bootstarp.addTcpService(8080);
+		bootstarp.addTcpService(8088);
         
         bootstarp.start();
     }

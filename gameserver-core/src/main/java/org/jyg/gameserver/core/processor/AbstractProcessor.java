@@ -1,6 +1,6 @@
 package org.jyg.gameserver.core.processor;
 
-import org.jyg.gameserver.core.bean.LogicEvent;
+import org.jyg.gameserver.core.data.EventData;
 import org.jyg.gameserver.core.session.Session;
 import org.jyg.gameserver.core.util.Context;
 import org.jyg.gameserver.core.util.FTLLoader;
@@ -17,34 +17,30 @@ public abstract class AbstractProcessor<T> implements Processor<T> {
 
 	protected static final FTLLoader ftlLoader = new FTLLoader();
 
-	private Context context;
+//	private Context context;
 
-	private int consumerId = 0;
+	private Consumer consumer;
+
 
 	public Consumer getDefaultConsumer() {
-		return context.getDefaultConsumer();
+		return consumer.getContext().getDefaultConsumer();
 	}
 
 
 	public Context getContext() {
-		return context;
+		return consumer.getContext();
 	}
 
-	public void setContext(Context context) {
-		this.context = context;
+
+	public abstract void process(Session session , EventData<T> event);
+
+
+	public Consumer getConsumer() {
+		return consumer;
 	}
 
-	public int getConsumerId() {
-		return consumerId;
+	public void setConsumer(Consumer consumer) {
+		this.consumer = consumer;
 	}
-
-	public void setConsumerId(int consumerId) {
-		this.consumerId = consumerId;
-	}
-
-	public abstract void process(Session session , LogicEvent<T> event);
-
-
-	
 }
 

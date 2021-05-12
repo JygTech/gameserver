@@ -3,10 +3,10 @@ package org.jyg.gameserver.core.consumer;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import org.jyg.gameserver.core.enums.EventType;
-import org.jyg.gameserver.core.proto.MsgBytes;
 import org.jyg.gameserver.core.startup.TcpClient;
 import org.jyg.gameserver.core.timer.ITimerHandler;
 import org.jyg.gameserver.core.timer.Timer;
+import org.jyg.gameserver.core.util.Context;
 
 import java.util.concurrent.TimeUnit;
 
@@ -22,6 +22,12 @@ public class RemoteConsumer extends Consumer {
 
     private Channel channel;
 
+    public RemoteConsumer(Context context, String remoteAddress , int port) {
+        this.tcpClient = context.createTcpClient();
+        this.remoteAddress = remoteAddress;
+        this.port = port;
+    }
+
     public RemoteConsumer(TcpClient tcpClient, String remoteAddress , int port) {
         this.tcpClient = tcpClient;
         this.remoteAddress = remoteAddress;
@@ -29,7 +35,7 @@ public class RemoteConsumer extends Consumer {
     }
 
     @Override
-    public void start() {
+    public void doStart() {
         connect();
         //定时检测重连 TODO think do it in other thread ?
         getContext().getDefaultConsumer().timerManager.addTimer(Integer.MAX_VALUE , TimeUnit.SECONDS.toMillis(5) , ()->{
@@ -72,7 +78,7 @@ public class RemoteConsumer extends Consumer {
         }
 
         if(isConnectAvailable()){
-            channel.write(MsgBytes.newBuilder().build());
+//            channel.write(MsgBytes.newBuilder().build());
         }else {
             logger.error(" publicEvent fail , isConnectAvailable false ");
         }

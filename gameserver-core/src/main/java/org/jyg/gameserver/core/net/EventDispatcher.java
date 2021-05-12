@@ -196,15 +196,6 @@ public class EventDispatcher {
 //	}
 
 
-	@Deprecated
-	public String getNoParamPath(String uri) {
-		int endIndex = uri.indexOf('?');
-		if (endIndex == -1) {
-			return uri;
-		}
-
-		return uri.substring(0, endIndex);
-	}
 	//============================= http end ===========================================
 
 
@@ -213,11 +204,11 @@ public class EventDispatcher {
 //	}
 
 
-	public ExecutorManager getSingleThreadExecutorManager(int num) {
-		return singleThreadExecutorManagerPool.getSingleThreadExecutorManager(num);
-	}
-
-	public ExecutorManager getSingleThreadExecutorManager(Session session) {
-		return singleThreadExecutorManagerPool.getSingleThreadExecutorManager(session);
-	}
+//	public ExecutorManager getSingleThreadExecutorManager(int num) {
+//		return singleThreadExecutorManagerPool.getSingleThreadExecutorManager(num);
+//	}
+//
+//	public ExecutorManager getSingleThreadExecutorManager(Session session) {
+//		return singleThreadExecutorManagerPool.getSingleThreadExecutorManager(session);
+//	}
 }

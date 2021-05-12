@@ -1,0 +1,13 @@
+syntax = "proto3";
+package org.jyg.gameserver.proto;
+option java_multiple_files = true;
+option java_package = "org.jyg.gameserver.proto";
+//option java_outer_classname = "MsgLogin";
+
+message MsgLoginRequest{
+	string account = 1;
+}
+message MsgLoginReply{
+	string account = 1;
+	string token = 2;
+}

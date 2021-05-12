@@ -1,11 +1,11 @@
 package org.jyg.gameserver.test.tcp.asyn;
 
 import org.jyg.gameserver.core.processor.ProtoProcessor;
-import org.jyg.gameserver.proto.p_sm_scene;
 import org.jyg.gameserver.core.session.Session;
-import org.jyg.gameserver.core.startup.GameServerBootstarp;
+import org.jyg.gameserver.core.startup.GameServerBootstrap;
 import org.jyg.gameserver.core.util.AsynCallEvent;
 import org.jyg.gameserver.core.util.CallBackEvent;
+import org.jyg.gameserver.proto.p_sm_scene;
 
 
 /**
@@ -15,11 +15,11 @@ import org.jyg.gameserver.core.util.CallBackEvent;
 public class AsynServerTest01
 {
     public static void main( String[] args ) throws Exception{
-        GameServerBootstarp bootstarp = new GameServerBootstarp();
+        GameServerBootstrap bootstarp = new GameServerBootstrap();
 
 		PingProcessor pingProcessor = new PingProcessor();
 		System.out.println(pingProcessor.getProtoClassName());
-        bootstarp.registerSocketEvent(1, pingProcessor);
+        bootstarp.registerSocketEvent(101, pingProcessor);
         
 		bootstarp.addTcpService(8080);
         
@@ -35,7 +35,7 @@ public class AsynServerTest01
 		@Override
 		public void process(Session session, p_sm_scene.p_sm_scene_request_ping msg) {
 			System.out.println("step 1 : ok , i see ping , will exec asyn event ,current thread : "+ Thread.currentThread().getName());
-			getContext().getSingleThreadExecutorManager(session).execute(new TestAsynCallEvent(),
+			getContext().getSingleThreadExecutorManager(session.getSessionId()).execute(new TestAsynCallEvent(),
 			new TestCallBackEvent());
 		}
 
@@ -50,7 +50,8 @@ public class AsynServerTest01
 		class TestCallBackEvent extends CallBackEvent {
 
 			@Override
-			public void execte(Object data) {
+			public void execte() {
+				Object data = getData();
 				System.out.println("step 3 :receive data : "+ data + " ,event call back exec ,current thread : "+ Thread.currentThread().getName());
 			}
 		}

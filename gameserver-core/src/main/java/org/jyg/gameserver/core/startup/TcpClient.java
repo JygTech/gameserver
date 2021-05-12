@@ -4,9 +4,10 @@ import com.google.protobuf.MessageLite;
 import org.jyg.gameserver.core.consumer.RingBufferConsumer;
 import org.jyg.gameserver.core.handle.initializer.MyChannelInitializer;
 import org.jyg.gameserver.core.handle.initializer.SocketClientInitializer;
+import org.jyg.gameserver.core.msg.ByteMsgObj;
 import org.jyg.gameserver.core.session.Session;
 import org.jyg.gameserver.core.util.Context;
-import org.jyg.gameserver.core.util.RemotingUtil;
+import org.jyg.gameserver.core.util.Logs;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
@@ -65,16 +66,17 @@ public class TcpClient extends AbstractBootstrap{
 		
 	}
 
+
 	@Override
 	public void doStart(){
-		start(new SocketClientInitializer(getContext()));
+		doStart(new SocketClientInitializer(getContext()));
 	}
 
 
-	public void start(MyChannelInitializer<Channel> channelInitializer){
-		System.out.println("客户端成功启动...");
+	private void doStart(MyChannelInitializer<Channel> channelInitializer){
+		Logs.DEFAULT_LOGGER.info("客户端成功启动...");
 		bootstrap.group(getContext().getEventLoopGroupManager().getWorkGroup());
-		bootstrap.channel( RemotingUtil.useEpoll() ? EpollSocketChannel.class : NioSocketChannel.class);
+		bootstrap.channel( getDefaultConsumer().getContext().isUseEpoll() ? EpollSocketChannel.class : NioSocketChannel.class);
 		bootstrap.handler(channelInitializer);
 		bootstrap.option(ChannelOption.SO_KEEPALIVE, false);
 		bootstrap.option(ChannelOption.TCP_NODELAY, true);
@@ -85,12 +87,12 @@ public class TcpClient extends AbstractBootstrap{
 
 	}
 
-	public TcpClient(MyChannelInitializer<Channel> channelInitializer) {
-
-	}
-	
 	// 连接服务端
 	public Channel connect(String host,int port) throws InterruptedException {
+		if(channel != null) {
+			channel.close();
+		}
+
 
 		ChannelFuture channelFuture = bootstrap.connect(host, port).sync();
 
@@ -102,6 +104,9 @@ public class TcpClient extends AbstractBootstrap{
 		isStart = true;
 
 		channel = channelFuture.channel();
+
+		session = new Session(channel , 0);
+
 		
 //		EventDispatcher.getInstance().addTimer( new IdleTimer(channel) );
 
@@ -111,6 +116,11 @@ public class TcpClient extends AbstractBootstrap{
 
 	public void write( MessageLite msg) throws IOException {
 		channel.writeAndFlush( msg);
+//		System.out.println("客户端发送数据>>>>");
+	}
+
+	public void write( ByteMsgObj byteMsgObj) throws IOException {
+		channel.writeAndFlush( byteMsgObj);
 //		System.out.println("客户端发送数据>>>>");
 	}
 
@@ -130,4 +140,7 @@ public class TcpClient extends AbstractBootstrap{
 		getContext().getEventLoopGroupManager().stopAllEventLoop();
 	}
 
+	public Session getSession() {
+		return session;
+	}
 }

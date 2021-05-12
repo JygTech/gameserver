@@ -38,23 +38,21 @@ public class ClientTest01
 //		client.addMsgId2ProtoMapping(3, p_scene_sm_chat.getDefaultInstance());
 //		client.addMsgId2ProtoMapping(4, p_sm_scene_chat.getDefaultInstance());
 
-		client.addMsgId2ProtoMapping(5, MsgChat.getDefaultInstance());
+		client.addMsgId2ProtoMapping(105, MsgChat.getDefaultInstance());
 
 		client.addProtoProcessor(chatProcessor);
 
         client.start();
-        client.connect("localhost",8080);
+        client.connect("localhost",8088);
+		for(int i=0;i<50;i++){
+			client.write(MsgChat.newBuilder().setContent("hello world!").build());
+			Thread.sleep(1);
+		}
 
-        client.write(MsgChat.newBuilder().setContent("hello world!").build());
 
-        Thread.sleep(1000);
 
-//        client.close();
+        client.close();
+		client.stop();
     }
     
-    @Test
-    public void test01() {
-    	char u = '　';
-    	System.out.println((int)(char)(u*100));
-    }
 }

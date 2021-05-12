@@ -7,6 +7,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpRequest;
+import org.jyg.gameserver.core.util.Logs;
 
 import java.io.IOException;
 
@@ -37,7 +38,7 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<HttpRequest> 
 	@Override
 	public void channelActive(ChannelHandlerContext ctx) throws Exception {
 		// TODO Auto-generated method stub
-		// super.channelActive(ctx);
+		 super.channelActive(ctx);
 		// httpChannels.put(id.getAndIncrement(), ctx.channel());
 	}
 
@@ -52,12 +53,12 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<HttpRequest> 
 	@Override
 	public void channelRead0(ChannelHandlerContext ctx, HttpRequest msg) throws Exception {
 
-		System.out.println(
+		Logs.DEFAULT_LOGGER.debug(
 				((FullHttpRequest) msg).content().refCnt() + " ," + Thread.currentThread().getName() + ">>>>>>>>>>..");
 
 		Request request = this.createRequest((HttpRequest) msg);
 
-		defaultConsumer.publicEvent(EventType.HTTP_MSG_COME, request, ctx.channel());
+		defaultConsumer.publicEvent(EventType.HTTP_MESSAGE_COME, request, ctx.channel());
 
 		// HttpRequest request = (HttpRequest) msg;
 

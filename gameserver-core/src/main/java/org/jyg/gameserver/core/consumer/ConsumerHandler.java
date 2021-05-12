@@ -1,8 +1,6 @@
 package org.jyg.gameserver.core.consumer;
 
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.WorkHandler;
-import org.jyg.gameserver.core.bean.LogicEvent;
+import org.jyg.gameserver.core.data.EventData;
 import org.jyg.gameserver.core.manager.ChannelManager;
 import org.jyg.gameserver.core.net.Request;
 import org.jyg.gameserver.core.session.Session;
@@ -13,7 +11,7 @@ import org.jyg.gameserver.core.util.Context;
 /**
  * created by jiayaoguang at 2017年12月6日
  */
-public class ConsumerHandler implements EventHandler<LogicEvent>, WorkHandler<LogicEvent> {
+public class ConsumerHandler {
 
     public static final int DEFAULT_CONSUMER_ID = 0;
 
@@ -36,20 +34,7 @@ public class ConsumerHandler implements EventHandler<LogicEvent>, WorkHandler<Lo
     }
 
 
-    @Override
-    public final void onEvent(LogicEvent event, long sequence, boolean endOfBatch) {
-
-        try {
-            this.onEvent(event);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-    }
-
-
-    @Override
-    public final void onEvent(LogicEvent event) throws Exception {
+    public final void onReciveEvent(EventData<?> event) {
 
         // System.out.println(event.getChannel());
         try {
@@ -57,12 +42,12 @@ public class ConsumerHandler implements EventHandler<LogicEvent>, WorkHandler<Lo
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            loop();
+            update();
         }
 
     }
 
-    private void doEvent(LogicEvent event) {
+    private void doEvent(EventData event) {
         switch (event.getChannelEventType()) {
 
 //			case CLIENT_SOCKET_CONNECT_ACTIVE:
@@ -84,7 +69,7 @@ public class ConsumerHandler implements EventHandler<LogicEvent>, WorkHandler<Lo
                 }
                 break;
 
-            case HTTP_MSG_COME:
+            case HTTP_MESSAGE_COME:
                 ((Request) event.getData()).setRequestid(getAndIncRequestId());
                 context.getDefaultConsumer().processHttpEvent(event);
 //				event.getChannel().close();
@@ -94,17 +79,31 @@ public class ConsumerHandler implements EventHandler<LogicEvent>, WorkHandler<Lo
             case ON_MESSAGE_COME:
 //				dispatcher.webSocketProcess(event);
 //				break;
-            case RPC_MSG_COME:
+            case RROTO_MSG_COME: {
                 Session session = null;
-                if(isDefaultConsumer()){
+                if (isDefaultConsumer()) {
                     session = channelManager.getSession(event.getChannel());
                 }
-                context.getDefaultConsumer().processProtoEvent(session , event);
+                context.getDefaultConsumer().processEventMsg(session, event);
                 break;
+            }
+            case BYTE_OBJ_MSG_COME:{
+                Session session = null;
+                if (isDefaultConsumer()) {
+                    session = channelManager.getSession(event.getChannel());
+                }
+                context.getDefaultConsumer().processEventMsg(session, event);
+                break;
+            }
 
-            case ON_TEXT_MESSAGE_COME:
-                System.out.println(event.getData());
+            case TEXT_MESSAGE_COME: {
+                Session session = null;
+                if (isDefaultConsumer()) {
+                    session = channelManager.getSession(event.getChannel());
+                }
+                context.getDefaultConsumer().processTextEvent(session, event);
                 break;
+            }
 
             case INNER_MSG:
                 doInnerMsg(event.getData());
@@ -120,7 +119,7 @@ public class ConsumerHandler implements EventHandler<LogicEvent>, WorkHandler<Lo
             return;
         }
         CallBackEvent callBackEvent = (CallBackEvent) msg;
-        callBackEvent.execte(callBackEvent.getData());
+        callBackEvent.execte();
     }
 
 
@@ -138,7 +137,7 @@ public class ConsumerHandler implements EventHandler<LogicEvent>, WorkHandler<Lo
     /**
      *
      */
-    protected void loop() {
+    public void update() {
         timerManager.updateTimer();
     }
 
@@ -160,5 +159,9 @@ public class ConsumerHandler implements EventHandler<LogicEvent>, WorkHandler<Lo
 
     public boolean isDefaultConsumer() {
         return consumerId == DEFAULT_CONSUMER_ID;
+    }
+
+    public ChannelManager getChannelManager() {
+        return channelManager;
     }
 }

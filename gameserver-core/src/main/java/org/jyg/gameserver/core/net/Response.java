@@ -88,6 +88,7 @@ public class Response {
 	
 	/**
 	 * 添加一个cookie
+	 * @param cookie cookie
 	 */
 	public void addCookie(Cookie cookie) {
 		cookies.add(cookie);
@@ -141,8 +142,24 @@ public class Response {
 	 * @return 500 error response
 	 */
 	private DefaultFullHttpResponse create500FullHttpResponse() {
+		return this.create500FullHttpResponse(internalServerErrorBytes);
+	}
+
+	/**
+	 * 创建500错误的http回复
+	 * @return 500 error response
+	 */
+	private DefaultFullHttpResponse create500FullHttpResponse(String msg) {
 		return this.createStatuHttpResponse(HttpResponseStatus.INTERNAL_SERVER_ERROR,
-				internalServerErrorBytes);
+				msg.getBytes(cn.hutool.core.util.CharsetUtil.CHARSET_UTF_8));
+	}
+	/**
+	 * 创建500错误的http回复
+	 * @return 500 error response
+	 */
+	private DefaultFullHttpResponse create500FullHttpResponse(byte[] byteMsg) {
+		return this.createStatuHttpResponse(HttpResponseStatus.INTERNAL_SERVER_ERROR,
+				byteMsg);
 	}
 
 	public void sendRedirect(String path){
@@ -155,5 +172,10 @@ public class Response {
 	public void write500Error() {
 		this.channel.writeAndFlush( create500FullHttpResponse() );
 	}
+
+	public void write500Error(String errorMsg) {
+		this.channel.writeAndFlush( create500FullHttpResponse(errorMsg) );
+	}
+
 	
 }

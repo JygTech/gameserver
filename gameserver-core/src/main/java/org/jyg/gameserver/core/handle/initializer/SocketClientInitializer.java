@@ -30,8 +30,14 @@ public class SocketClientInitializer extends
 //		pipeline.addLast(new ProtobufVarint32FrameDecoder());
 		
 		pipeline.addLast(new MyProtobufDecoder(context));
-		
-		pipeline.addLast(new MyProtobufEncoder(context));
+
+//		if(context.getServerConfig().isNeedMergeProto()){
+//			pipeline.addLast(context.getNettyHandlerFactory().getProtoMergeHandler());
+//		}else {
+			pipeline.addLast("protoMsgEncoder" , context.getNettyHandlerFactory().getMyProtobufEncoder());
+//		}
+
+		pipeline.addLast("byteMsgEncoder" , context.getNettyHandlerFactory().getMyByteMsgObjEncoder());
 
 		pipeline.addLast(new MyProtobufListEncoder(context));
 		

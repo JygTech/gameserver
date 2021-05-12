@@ -9,7 +9,6 @@ import java.io.Writer;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.google.inject.Inject;
 
 import freemarker.template.Configuration;
 import freemarker.template.Template;
@@ -22,14 +21,13 @@ public class FTLLoader {
     
     static Configuration configuration = new Configuration( Configuration.VERSION_2_3_23 );
     
-    @Inject
     public FTLLoader(){
     	
     	configuration.setClassForTemplateLoading(FTLLoader.class, "/");
     	
     }
     
-    public byte[] getFtl(String ftlName , Map<String, String> params  )  {
+    public byte[] getFtl(String ftlName , Map<String, Object> params  )  {
     	try {
 	    	Template template = configuration.getTemplate(ftlName);
 	    	
@@ -48,7 +46,7 @@ public class FTLLoader {
     
     public byte[] getIndexFtl(String username) {
     	
-    	Map<String, String> params = new HashMap<>();
+    	Map<String, Object> params = new HashMap<>();
         params.put("username", username);
     	
 		return getFtl("index.ftl",params);

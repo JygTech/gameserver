@@ -1,30 +1,32 @@
 package org.jyg.gameserver.core.util;
 
 import com.google.protobuf.MessageLite;
-import com.google.protobuf.Parser;
+import io.netty.channel.epoll.Epoll;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMaps;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import org.jyg.gameserver.core.bean.ServerConfig;
 import org.jyg.gameserver.core.consumer.Consumer;
-import org.jyg.gameserver.core.manager.ConsumerManager;
-import org.jyg.gameserver.core.manager.EventLoopGroupManager;
-import org.jyg.gameserver.core.manager.ExecutorManager;
-import org.jyg.gameserver.core.manager.SingleThreadExecutorManagerPool;
-import org.jyg.gameserver.core.session.Session;
+import org.jyg.gameserver.core.data.ServerConfig;
+import org.jyg.gameserver.core.handle.NettyHandlerFactory;
+import org.jyg.gameserver.core.manager.*;
+import org.jyg.gameserver.core.msg.AbstractMsgCodec;
+import org.jyg.gameserver.core.msg.ByteMsgObj;
+import org.jyg.gameserver.core.msg.JsonMsgCodec;
+import org.jyg.gameserver.core.startup.TcpClient;
 
 import java.lang.reflect.InvocationTargetException;
 
 /**
  * create by jiayaoguang on 2020/5/3
  */
-public class Context {
+public class Context implements Lifecycle{
 
     private static final String DEFAULT_CONFIG_FILE_NAME = "jyg.properties";
 //    private String configFileName = DEFAULT_CONFIG_FILE_NAME;
+
 
     private final Consumer defaultConsumer;
     private final EventLoopGroupManager eventLoopGroupManager;
@@ -32,23 +34,41 @@ public class Context {
 
     private volatile boolean isStart = false;
 
-
     private final ServerConfig serverConfig = new ServerConfig();
 
     private final ConsumerManager consumerManager;
+
+    private final RemoteInvokeManager remoteInvokeManager;
 
 //    private final ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
 
     //TODO I think ...
     private final SingleThreadExecutorManagerPool singleThreadExecutorManagerPool;
 
-    private Object2IntMap<Class<? extends MessageLite>> protoClazz2MsgidMap = new Object2IntOpenHashMap<>();
-    private Int2ObjectMap<Class<? extends MessageLite>> msgId2protoClazzMap = new Int2ObjectOpenHashMap<>();
-    private Int2ObjectMap<Parser<? extends MessageLite>> msgId2protoParserMap = new Int2ObjectOpenHashMap<>();
+    private Object2IntMap<Class<? extends MessageLite>> protoClazz2MsgIdMap = new Object2IntOpenHashMap<>();
+    private Int2ObjectMap<AbstractMsgCodec<?>> msgId2MsgCodecMap = new Int2ObjectOpenHashMap<>();
+
+    private Object2IntMap<Class<? extends ByteMsgObj>> msgObjClazz2MsgIdMap = new Object2IntOpenHashMap<>();
+
+    private final boolean useEpoll;
+
+    private final NettyHandlerFactory nettyHandlerFactory;
+
+    private final InstanceManager instanceManager;
 
     public Context(Consumer defaultConsumer) {
+        this(defaultConsumer ,DEFAULT_CONFIG_FILE_NAME );
+    }
+
+    public Context(Consumer defaultConsumer , String configFileName) {
         this.defaultConsumer = defaultConsumer;
-        this.eventLoopGroupManager = new EventLoopGroupManager();
+
+        loadServerConfig(configFileName);
+
+        this.useEpoll = (RemotingUtil.isLinuxPlatform() && Epoll.isAvailable() && serverConfig.isPreferEpoll());
+
+
+        this.eventLoopGroupManager = new EventLoopGroupManager(useEpoll);
 //        this.executorManager = new ExecutorManager(10, defaultConsumer);
         this.singleThreadExecutorManagerPool = new SingleThreadExecutorManagerPool(defaultConsumer);
 
@@ -57,7 +77,12 @@ public class Context {
         this.consumerManager = new ConsumerManager(this);
         this.consumerManager.addConsumer(defaultConsumer);
 
-        loadServerConfig(DEFAULT_CONFIG_FILE_NAME);
+        this.nettyHandlerFactory = new NettyHandlerFactory(this);
+
+        this.remoteInvokeManager = new RemoteInvokeManager();
+
+        this.instanceManager = new InstanceManager();
+
     }
 
     public Consumer getDefaultConsumer() {
@@ -75,27 +100,43 @@ public class Context {
     }
 
     public void addMsgId2ProtoMapping(int msgId,  MessageLite defaultInstance) {
-        this.protoClazz2MsgidMap.put(defaultInstance.getClass(), msgId);
-        this.msgId2protoClazzMap.put(msgId, defaultInstance.getClass());
-        this.msgId2protoParserMap.put(msgId , defaultInstance.getParserForType());
+        ProtoMsgCodec protoMsgCodec = new ProtoMsgCodec( msgId,defaultInstance);
+        this.protoClazz2MsgIdMap.put(defaultInstance.getClass(), msgId);
+        this.msgId2MsgCodecMap.put(msgId ,protoMsgCodec );
     }
 
-    public Parser<? extends MessageLite> getProtoParserByMsgId (int msgId){
-        return this.msgId2protoParserMap.get(msgId);
+    public void addMsgId2JsonMsgCLassMapping(int msgId,  Class<? extends ByteMsgObj> byteMsgObjClazz) {
+        JsonMsgCodec jsonMsgCodec = new JsonMsgCodec( msgId,byteMsgObjClazz);
+        this.msgObjClazz2MsgIdMap.put(byteMsgObjClazz ,msgId );
+        this.msgId2MsgCodecMap.put(msgId ,jsonMsgCodec );
     }
 
-    public Class<? extends MessageLite> getProtoClassByMsgId(int msgId) {
-        return msgId2protoClazzMap.get(msgId);
+
+
+    public<T> AbstractMsgCodec<?> getMsgCodec (int msgId){
+
+        AbstractMsgCodec<?> msgCodec = msgId2MsgCodecMap.get(msgId);
+        if(msgCodec == null){
+            return null;
+        }
+
+        return msgCodec;
     }
+
 
     public int getMsgIdByProtoClass( Class<? extends MessageLite> protoClass) {
 
-        return protoClazz2MsgidMap.getInt(protoClass);
+        return protoClazz2MsgIdMap.getInt(protoClass);
+    }
+
+    public int getMsgIdByByteMsgObj( Class<? extends ByteMsgObj> protoClass) {
+
+        return msgObjClazz2MsgIdMap.getInt(protoClass);
     }
 
 
-    public ExecutorManager getSingleThreadExecutorManager(Session session) {
-        return singleThreadExecutorManagerPool.getSingleThreadExecutorManager(session);
+    public ExecutorManager getSingleThreadExecutorManager(long playerUid) {
+        return singleThreadExecutorManagerPool.getSingleThreadExecutorManager(playerUid);
     }
 
     public synchronized void start() {
@@ -104,11 +145,19 @@ public class Context {
             return;
         }
         this.isStart = true;
-        this.protoClazz2MsgidMap = Object2IntMaps.unmodifiable(this.protoClazz2MsgidMap);
-        this.msgId2protoClazzMap = Int2ObjectMaps.unmodifiable(this.msgId2protoClazzMap);
-        this.msgId2protoParserMap = Int2ObjectMaps.unmodifiable(this.msgId2protoParserMap);
+        this.protoClazz2MsgIdMap = Object2IntMaps.unmodifiable(this.protoClazz2MsgIdMap);
+        this.msgId2MsgCodecMap = Int2ObjectMaps.unmodifiable(this.msgId2MsgCodecMap);
+
+        this.remoteInvokeManager.scan(getServerConfig().getSacnInvokeClassPath());
+
+        this.instanceManager.start();
+
 
 //        loadServerConfig(configFileName);
+    }
+
+    public synchronized void stop() {
+
     }
 
     public synchronized void loadServerConfig(String configFileName){
@@ -132,8 +181,46 @@ public class Context {
         return consumerManager;
     }
 
+    public NettyHandlerFactory getNettyHandlerFactory() {
+        return nettyHandlerFactory;
+    }
+
 
     //    public ScheduledExecutorService getScheduledExecutorService() {
 //        return scheduledExecutorService;
 //    }
+
+
+    public boolean isUseEpoll() {
+        return useEpoll;
+    }
+
+
+    public RemoteInvokeManager getRemoteInvokeManager() {
+        return remoteInvokeManager;
+    }
+
+
+    public<T> T getInstance(Class<T> tClass){
+        return instanceManager.getInstance(tClass);
+    }
+
+    public void putInstance(Object obj){
+        instanceManager.putInstance(obj.getClass(),obj);
+    }
+
+    public void putInstance(Class<?> clazz ) throws IllegalAccessException, InvocationTargetException, InstantiationException {
+        instanceManager.putInstance(clazz);
+    }
+
+
+    public InstanceManager getInstanceManager() {
+        return instanceManager;
+    }
+
+
+    public TcpClient createTcpClient(){
+        return new TcpClient(this);
+    }
+
 }

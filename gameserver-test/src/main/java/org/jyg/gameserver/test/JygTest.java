@@ -1,11 +1,9 @@
 package org.jyg.gameserver.test;
 
 import cn.hutool.core.util.ZipUtil;
-import com.google.protobuf.ByteString;
 import io.netty.util.internal.shaded.org.jctools.queues.MpscUnboundedArrayQueue;
 import org.junit.Test;
-import org.jyg.gameserver.core.bean.ServerConfig;
-import org.jyg.gameserver.core.proto.MsgBytes;
+import org.jyg.gameserver.core.data.ServerConfig;
 import org.jyg.gameserver.core.util.AllUtil;
 import org.jyg.gameserver.core.util.ExecTimeUtil;
 import org.jyg.gameserver.core.util.IdUtil;
@@ -17,11 +15,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-/**
- * @Auther: jiayaoguang
- * @Date: 2020/3/27
- * @Description: none
- */
 public class JygTest {
 
     public static class A{
@@ -181,19 +174,19 @@ public class JygTest {
     @Test
     public void testBytesZip() throws Exception{
 
-        byte[] bs = new byte[10000];
-
-        MsgBytes msgBytes = MsgBytes.newBuilder().setByteDate(ByteString.copyFrom(bs)).build();
-
-        byte[] zbs = ZipUtil.gzip(bs);
-
-        byte[] zbs2 = ZipUtil.gzip(msgBytes.toByteArray());
-
-        byte[] zbs3 = ZipUtil.gzip(MsgBytes.newBuilder().setByteDate(ByteString.copyFrom(zbs2)).build().toByteArray());
-
-        AllUtil.println(zbs.length);
-        AllUtil.println(zbs2.length);
-        AllUtil.println(zbs3.length);
+//        byte[] bs = new byte[10000];
+//
+//        MsgBytes msgBytes = MsgBytes.newBuilder().setByteData(ByteString.copyFrom(bs)).build();
+//
+//        byte[] zbs = ZipUtil.gzip(bs);
+//
+//        byte[] zbs2 = ZipUtil.gzip(msgBytes.toByteArray());
+//
+//        byte[] zbs3 = ZipUtil.gzip(MsgBytes.newBuilder().setByteData(ByteString.copyFrom(zbs2)).build().toByteArray());
+//
+//        AllUtil.println(zbs.length);
+//        AllUtil.println(zbs2.length);
+//        AllUtil.println(zbs3.length);
     }
 
     @Test
@@ -279,5 +272,19 @@ public class JygTest {
             AllUtil.println(IdUtil.nextId());
 
     }
+    @Test
+    public void testInvoke(){
+        Object o = "";
+        p(o);
+    }
+
+    public void p(Object o){
+        AllUtil.println("Object");
+    }
+
+    public void p(String o){
+        AllUtil.println("Object");
+    }
+
 
 }

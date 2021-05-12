@@ -2,6 +2,15 @@
 ![Java CI](https://github.com/jiayaoguang/gameserver/workflows/Java%20CI/badge.svg)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ------
+Maven 
+
+    <dependency>
+        <groupId>com.github.jiayaoguang</groupId>
+        <artifactId>gameserver-core</artifactId>
+        <version>0.0.1</version>
+    </dependency>
+
+
 * core模块-主要的网络库
 * auth模块-登录服
 * center模块-场景服管理
@@ -12,7 +21,7 @@
 使用protobuf3.5.1作为发送消息序列化格式,
 使用disruptor3.3.2框架去做端口消息的多线程同步
 
-能够处理http，protobuf类型的数据
+能够处理http，protobuf , json/自定义字节数组 类型的数据
 
 构建处理 protoBuf数据的服务器例子:
 >

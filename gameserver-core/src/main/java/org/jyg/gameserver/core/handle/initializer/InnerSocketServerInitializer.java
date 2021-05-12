@@ -4,7 +4,6 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelPipeline;
 import org.jyg.gameserver.core.handle.InnerSocketHandler;
 import org.jyg.gameserver.core.handle.MyProtobufDecoder;
-import org.jyg.gameserver.core.handle.MyProtobufEncoder;
 import org.jyg.gameserver.core.handle.MyProtobufListEncoder;
 import org.jyg.gameserver.core.util.Context;
 
@@ -25,11 +24,18 @@ public class InnerSocketServerInitializer extends
 //		pipeline.addLast(new ProtobufVarint32FrameDecoder());
 		
 		
-		pipeline.addLast(new MyProtobufDecoder(context));
-		
-		pipeline.addLast(new MyProtobufEncoder(context));
+		pipeline.addLast("msgDecoder" , new MyProtobufDecoder(context));
 
-		pipeline.addLast(new MyProtobufListEncoder(context));
+		if(context.getServerConfig().isNeedMergeProto()){
+			pipeline.addLast("protoMsgMergeEncoder" , context.getNettyHandlerFactory().createProtoMergeHandler(context));
+		}else {
+			pipeline.addLast("protoMsgEncoder" , context.getNettyHandlerFactory().getMyProtobufEncoder());
+		}
+
+		pipeline.addLast("byteMsgEncoder" , context.getNettyHandlerFactory().getMyByteMsgObjEncoder());
+
+
+//		pipeline.addLast(new MyProtobufListEncoder(context));
 		
 		pipeline.addLast(new InnerSocketHandler(context.getDefaultConsumer()));
 		

@@ -1,0 +1,13 @@
+syntax = "proto3";
+package org.jyg.gameserver.proto;
+option java_multiple_files = true;
+option java_package = "org.jyg.gameserver.proto";
+//option java_outer_classname = "MsgChat";
+
+message MsgChatRequest{
+	string content = 1;
+}
+message MsgChatReply{
+	string account = 1;
+	string content = 2;
+}

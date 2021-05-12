@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
 
 import javax.activation.MimetypesFileTypeMap;
 
-import org.jyg.gameserver.core.util.Constants;
+import org.apache.commons.lang3.StringUtils;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -55,6 +55,7 @@ import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.stream.ChunkedFile;
 import io.netty.util.CharsetUtil;
 import io.netty.util.internal.SystemPropertyUtil;
+import org.jyg.gameserver.core.util.Logs;
 
 /**
  * A simple handler that serves incoming HTTP requests to send their respective
@@ -118,20 +119,32 @@ public class HttpStaticFileServerHandler extends SimpleChannelInboundHandler<Ful
 //		String s = request.headers().get(HttpHeaderNames.CONTENT_TYPE);
 //
 //		System.out.println("CONTENT_TYPE: " + s + "," + request.headers());
+
+
+
 		//包含点字符的当做静态文件请求处理
-		if (request.uri().indexOf('.')==-1) {
-			request.retain();
-			ctx.fireChannelRead(request);
-			System.out.println("static :" + request.refCnt());
-			return;
+
+
+		String noParamUri = getNoParamUri(request.uri());
+
+		if( noParamUri.indexOf('.')==-1){
+			if (!request.uri().endsWith("/")) {
+				request.retain();
+				ctx.fireChannelRead(request);
+				Logs.DEFAULT_LOGGER.info("static :" + request.refCnt());
+				return;
+			}
 		}
 
 		if (request.method() != GET) {
+			Logs.DEFAULT_LOGGER.info("request.method() != GET :" + request.uri());
 			sendError(ctx, METHOD_NOT_ALLOWED);
 			return;
 		}
 
-		final String uri = Constants.HTTP_ROOT_DIR+ request.uri();
+		String httpRootDir = System.getProperty("http.root.dir","/html");
+
+		final String uri = httpRootDir + request.uri();
 		
 		final String path = sanitizeUri(uri);
 		if (path == null) {
@@ -139,7 +152,7 @@ public class HttpStaticFileServerHandler extends SimpleChannelInboundHandler<Ful
 			return;
 		}
 
-		System.out.println(uri);
+		Logs.DEFAULT_LOGGER.info(uri);
 		
 		File file = new File( path);
 		if (file.isHidden() || !file.exists()) {
@@ -236,6 +249,20 @@ public class HttpStaticFileServerHandler extends SimpleChannelInboundHandler<Ful
 		}
 	}
 
+	private String getNoParamUri(String uri) {
+
+		if(StringUtils.isEmpty(uri)){
+			return uri;
+		}
+
+		String noParamUri = uri;
+
+		if (uri.contains("?")) {
+			noParamUri = uri.substring(0, uri.indexOf('?'));
+		}
+		return noParamUri;
+	}
+
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
 		cause.printStackTrace();
@@ -291,9 +318,13 @@ public class HttpStaticFileServerHandler extends SimpleChannelInboundHandler<Ful
 				continue;
 			}
 
+
 			String name = f.getName();
 			if (!ALLOWED_FILE_NAME.matcher(name).matches()) {
 				continue;
+			}
+			if(f.isDirectory()){
+				name += "/";
 			}
 
 			buf.append("<li><a href=\"").append(name).append("\">").append(name).append("</a></li>\r\n");

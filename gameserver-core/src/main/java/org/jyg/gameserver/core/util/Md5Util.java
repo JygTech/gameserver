@@ -4,7 +4,6 @@ import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-import org.junit.Test;
 
 /**
  * created by jiayaoguang at 2017年12月26日
@@ -63,9 +62,5 @@ public class Md5Util {
 		return md5.digest();
 	}
 	
-	@Test
-	public void test() {
-		System.out.println(getMD5String("123456"));
-	}
-	
+
 }

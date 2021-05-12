@@ -1,8 +1,12 @@
 package org.jyg.gameserver.core.startup;
 
 import com.google.protobuf.MessageLite;
+import org.jyg.gameserver.core.manager.Lifecycle;
+import org.jyg.gameserver.core.msg.ByteMsgObj;
+import org.jyg.gameserver.core.processor.ByteMsgObjProcessor;
 import org.jyg.gameserver.core.processor.HttpProcessor;
 import org.jyg.gameserver.core.processor.ProtoProcessor;
+import org.jyg.gameserver.core.processor.RemoteInvokeProcessor;
 import org.jyg.gameserver.core.util.Context;
 import org.jyg.gameserver.core.consumer.Consumer;
 import org.jyg.gameserver.core.consumer.RingBufferConsumer;
@@ -14,7 +18,7 @@ import org.slf4j.LoggerFactory;
  * 抽象启动类
  */
 
-public abstract class AbstractBootstrap {
+public abstract class AbstractBootstrap implements Lifecycle {
 
     protected final Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -51,11 +55,16 @@ public abstract class AbstractBootstrap {
 
     public void addProtoProcessor(ProtoProcessor<? extends MessageLite> protoProcessor) {
         int msgId = context.getMsgIdByProtoClass(protoProcessor.getProtoClass());
-        this.context.getDefaultConsumer().addProtoProcessor(msgId, protoProcessor , context);
+        this.context.getDefaultConsumer().addProcessor(msgId, protoProcessor);
+    }
+
+    public void addByteMsgObjProcessor(ByteMsgObjProcessor<? extends ByteMsgObj> byteMsgObjProcessor) {
+//        int msgId = byteMsgObjProcessor.getMsgId();
+        this.context.getDefaultConsumer().addProcessor(byteMsgObjProcessor);
     }
 
     public void addProtoProcessor(int msgId,ProtoProcessor<? extends MessageLite> protoProcessor) {
-        this.context.getDefaultConsumer().addProtoProcessor(msgId, protoProcessor , context);
+        this.context.getDefaultConsumer().addProcessor(msgId, protoProcessor);
     }
 
     public void registerHttpEvent(String path, HttpProcessor processor){
@@ -70,7 +79,7 @@ public abstract class AbstractBootstrap {
         if (path == null) {
             throw new IllegalArgumentException(" getProtoEventId -1 ");
         }
-        this.context.getDefaultConsumer().addHttpProcessor(path, processor, context);
+        this.context.getDefaultConsumer().addHttpProcessor(path, processor);
     }
 
 
@@ -109,29 +118,41 @@ public abstract class AbstractBootstrap {
         return context;
     }
 
-    public final synchronized void start() throws InterruptedException{
+    public final synchronized void start(){
         if (isStart) {
 //            throw new IllegalStateException("server is already start");
             logger.error("server is already start ");
             return;
         }
+
+        initCommonProcessor();
+
         isStart = true;
         context.start();
         beforeStart();
-        doStart();
+        try {
+            doStart();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
 
         for(Consumer consumer : context.getConsumerManager().getConsumers()){
             consumer.start();
         }
     }
 
+    private void initCommonProcessor(){
+        addByteMsgObjProcessor(new RemoteInvokeProcessor());
+    }
+
     protected void beforeStart() {
 
     }
 
+
     public abstract void doStart() throws InterruptedException;
 
-    public void stop() throws InterruptedException{
+    public void stop(){
         for(Consumer consumer : context.getConsumerManager().getConsumers()){
             consumer.stop();
         }
